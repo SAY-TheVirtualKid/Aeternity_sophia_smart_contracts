@@ -1,0 +1,36 @@
+contract AddVirtualKidWithVote =
+
+  record kid =
+    { creatorSocialWorkerAddress : address,
+      name           			 : string,
+      age			 			 : int,
+      birthPlace	 			 : string,
+      voteCount      			 : int }
+
+  record state =
+    { kids      : map(int, kid),
+      totalKidNumber : int }
+
+  function init() =
+    { kids = {},
+      totalKidNumber = 0 }
+
+  public function getKid(index : int) : kid =
+  	switch(Map.lookup(index, state.kids))
+	    None    => abort("There was no kid with this index registered.")
+	    Some(x) => x
+
+  public stateful function registerKid(name' : string, age' : int, birthPlace' : string) =
+    let kid = { creatorSocialWorkerAddress = Call.caller, name = name', age = age' , birthPlace = birthPlace' , voteCount = 0}
+    let index = getTotalKidNumber() + 1
+    put(state{ kids[index] = kid, totalKidNumber = index })
+
+  public function getTotalKidNumber() : int =
+    state.totalKidNumber
+
+  public stateful function voteKid(index : int) =
+    let kid = getKid(index)
+    Chain.spend(kid.creatorSocialWorkerAddress, Call.value)
+    let updatedVoteCount = kid.voteCount + Call.value
+    let updatedKids = state.kids{ [index].voteCount = updatedVoteCount }
+    put(state{ kids = updatedKids })
